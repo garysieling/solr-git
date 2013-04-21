@@ -1,6 +1,8 @@
 <project name="solr-git"
          basedir="."
          default="default">
+  <property name="build-properties-file-name"
+            value="build.properties"/>
   <property name="src.dir"
             value="."/>
   <property name="build.dir"
@@ -9,8 +11,10 @@
             value="${build.dir}/classes"/>
   <property name="main-class"
             value="Main"/>
-  <property name="lib.dir"
-            value="/usr/share/java"/>
+
+  <property file="${build-properties-file-name}"/>
+  <fail message="lib.dir must be defined in ${build-properties-file-name}: e.g. /usr/share/java"
+        unless="lib.dir"/>
 
   <path id="lib-paths">
     <pathelement location="${lib.dir}/solr-solrj.jar"/>
