@@ -49,5 +49,7 @@
 
   <target name="default"
           depends="clean,run"/>
+  <target name="test"
+          depends="clean,compile"/>
 </project>
 
