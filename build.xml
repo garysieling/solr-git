@@ -1,0 +1,55 @@
+<project name="solr-git"
+         basedir="."
+         default="default">
+  <property name="build-properties-file-name"
+            value="build.properties"/>
+  <property name="src.dir"
+            value="."/>
+  <property name="build.dir"
+            value="build"/>
+  <property name="classes.dir"
+            value="${build.dir}/classes"/>
+  <property name="main-class"
+            value="Main"/>
+
+  <property file="${build-properties-file-name}"/>
+  <fail message="lib.dir must be defined in ${build-properties-file-name}: e.g. /usr/share/java"
+        unless="lib.dir"/>
+
+  <path id="lib-paths">
+    <pathelement location="${lib.dir}/solr-solrj.jar"/>
+    <pathelement location="${lib.dir}/org.eclipse.jgit.jar"/>
+    <pathelement location="${lib.dir}/commons-httpclient.jar"/>
+    <pathelement location="${lib.dir}/slf4j-api.jar"/>
+    <pathelement location="${lib.dir}/slf4j-simple.jar"/>
+  </path>
+
+  <target name="clean">
+    <delete dir="${build.dir}"/>
+  </target>
+
+  <target name="compile">
+    <mkdir dir="${classes.dir}"/>
+    <javac includeantruntime="false"
+           srcdir="${src.dir}"
+           destdir="${classes.dir}"
+           classpathref="lib-paths"/>
+  </target>
+
+  <target name="run"
+          depends="compile">
+    <java classname="${main-class}"
+          fork="true"
+          classpathref="lib-paths">
+      <classpath>
+        <pathelement location="${classes.dir}"/>
+      </classpath>
+    </java>
+  </target>
+
+  <target name="default"
+          depends="clean,run"/>
+  <target name="test"
+          depends="clean,compile"/>
+</project>
+
