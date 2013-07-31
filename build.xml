@@ -1,10 +1,15 @@
 <project name="solr-git"
          basedir="."
-         default="default">
+         default="test"
+         xmlns:ivy="antlib:org.apache.ivy.ant">
+
   <property name="build-properties-file-name"
             value="build.properties"/>
   <property name="src.dir"
             value="."/>
+  <property name="lib.dir"
+            value="lib"/>
+  <mkdir dir="${lib.dir}"/>
   <property name="build.dir"
             value="build"/>
   <property name="classes.dir"
@@ -12,23 +17,54 @@
   <property name="main-class"
             value="Main"/>
 
-  <property file="${build-properties-file-name}"/>
-  <fail message="lib.dir must be defined in ${build-properties-file-name}: e.g. /usr/share/java"
-        unless="lib.dir"/>
+  <property name="ivy.install.version"
+            value="2.1.0-rc2"/>
+  <condition property="ivy.home"
+             value="${env.IVY_HOME}">
+    <isset property="env.IVY_HOME"/>
+  </condition>
+  <property name="ivy.home"
+            value="${user.home}/.ant"/>
+  <property name="ivy.jar.dir"
+            value="${ivy.home}/lib"/>
+  <property name="ivy.jar.file"
+            value="${ivy.jar.dir}/ivy.jar"/>
+
+  <target name="download-ivy"
+          unless="offline">
+    <mkdir dir="${ivy.jar.dir}"/>
+    <get src="http://repo2.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+         dest="${ivy.jar.file}"
+         usetimestamp="true"/>
+  </target>
+
+  <target name="init-ivy"
+          depends="download-ivy">
+    <path id="ivy.lib.path">
+      <fileset dir="${ivy.jar.dir}" includes="*.jar"/>
+    </path>
+    <taskdef resource="org/apache/ivy/ant/antlib.xml"
+             uri="antlib:org.apache.ivy.ant"
+             classpathref="ivy.lib.path"/>
+  </target>
+
+  <target name="resolve"
+          description="Retrieve dependencies with Ivy"
+          depends="init-ivy">
+    <echo message="Resolving project dependencies"/>
+    <ivy:retrieve/>
+  </target>
 
   <path id="lib-paths">
-    <pathelement location="${lib.dir}/solr-solrj.jar"/>
-    <pathelement location="${lib.dir}/org.eclipse.jgit.jar"/>
-    <pathelement location="${lib.dir}/commons-httpclient.jar"/>
-    <pathelement location="${lib.dir}/slf4j-api.jar"/>
-    <pathelement location="${lib.dir}/slf4j-simple.jar"/>
+    <fileset dir="${lib.dir}" includes="**/*.jar"/>
   </path>
 
   <target name="clean">
     <delete dir="${build.dir}"/>
   </target>
 
-  <target name="compile">
+  <target name="compile"
+          depends="resolve">
     <mkdir dir="${classes.dir}"/>
     <javac includeantruntime="false"
            srcdir="${src.dir}"
@@ -36,20 +72,21 @@
            classpathref="lib-paths"/>
   </target>
 
-  <target name="run"
+  <target name="invoke"
           depends="compile">
     <java classname="${main-class}"
           fork="true"
-          classpathref="lib-paths">
+          classpathref="lib-paths"
+          failonerror="true">
       <classpath>
         <pathelement location="${classes.dir}"/>
       </classpath>
     </java>
   </target>
 
-  <target name="default"
-          depends="clean,run"/>
   <target name="test"
           depends="clean,compile"/>
+  <target name="run"
+          depends="clean,invoke"/>
 </project>
 
