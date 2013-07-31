@@ -1,5 +1,4 @@
-solr-git
-========
+# solr-git [![Build status](https://travis-ci.org/rcook/solr-git.png)](https://travis-ci.org/rcook/solr-git)
 
 Convert git commit history to solr index
 

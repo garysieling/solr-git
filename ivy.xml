@@ -1,0 +1,14 @@
+<ivy-module version="2.0">
+  <info organisation="solr-git"
+        module="solr-git"
+        revision="0.0.0"/>
+  <dependencies>
+    <dependency org="org.apache.solr"
+                name="solr-solrj"
+                rev="4.4.0"/>
+    <dependency org="com.madgag"
+                name="org.eclipse.jgit"
+                rev="0.10.99.0"/>
+  </dependencies>
+</ivy-module>
+
