@@ -14,6 +14,18 @@ Setup
 
 Setup pre-requisites:
 ```
-apt-get install openjdk-7-jdk git-core tomcat7
+apt-get install openjdk-7-jdk git-core tomcat7 unzip
 ```
 
+Solr setup:
+```
+cd ~
+wget http://apache.mesi.com.ar/lucene/solr/4.5.0/solr-4.5.0.zip
+unzip solr-4.5.0.zip
+cp solr-4.5.0/dist/solr-4.5.0.war /var/lib/tomcat7/webapps/
+```
+
+Setting up the application:
+```
+git clone https://github.com/garysieling/solr-git.git
+```
