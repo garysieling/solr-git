@@ -1,9 +1,10 @@
 import java.io.File;
 import java.io.IOException;
-import java.io.InvalidObjectException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.Date;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,7 +20,7 @@ import org.eclipse.jgit.errors.AmbiguousObjectException;
 import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
-import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -27,20 +28,87 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 
-@SuppressWarnings("deprecation")
 public class Main {
+	static int processed = 0;
+	static long startTime = new Date().getTime();
+	
+	public static class InsertThread extends Thread
+	{
+		private final int _index;
+		private final int _maxIndex;
+		public InsertThread(int index, int maxIndex)
+		{
+			_index = index;
+			_maxIndex = maxIndex;
+		}
+		
+		public void run() 
+		{
+			try 
+			{
+				File[] files = new File("E:\\VMs\\expert-search\\repos\\").listFiles();
+				HttpSolrServer server = new HttpSolrServer(
+						"http://localhost:8983/solr/");
+
+				int i = 0;
+							
+				for (File f : files)
+				{
+					if (i % _maxIndex == _index)
+					{
+						String filename = f.getAbsolutePath() + "\\.git";
+						
+						System.out.println(filename);
+						convertRepo(server, filename);
+					}
+					
+					if (i > 100) {
+						break;
+					}
+
+				}
+				
+				System.out.println("Total repositories: " + i);
+			}
+			catch (Error e)
+			{
+				System.out.println(e.getMessage());
+			} catch (MalformedURLException e) {
+				System.out.println(e.getMessage());
+			} catch (AmbiguousObjectException e) {
+				e.printStackTrace();
+			} catch (MissingObjectException e) {
+				e.printStackTrace();
+			} catch (IncorrectObjectTypeException e) {
+				e.printStackTrace();
+			} catch (CorruptObjectException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (SolrServerException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	/**
 	 * @param args
 	 * @throws Exception
 	 */
+	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws Exception {
-		SolrServer server = new HttpSolrServer(
-				"http://localhost:8080/solr/");
-		server.deleteByQuery("*:*");
-
-		System.out.println("Loading repository");
-
-		convertRepo(server, "/Users/gary/REPOSITORY.git/.git");
+		Date startDate = new Date();
+		
+		int maxThreads = 1;
+		for (int i = 0; i < maxThreads; i++)
+		{
+			new InsertThread(i, maxThreads).start();
+		}
+		
+		Date endDate = new Date();
+		
+		System.out.println(startDate.toGMTString());
+		System.out.println(endDate.toGMTString());
 	}
 
 	private static void convertRepo(SolrServer server, String path)
@@ -54,146 +122,199 @@ public class Main {
 				.build();
 		System.out.println("Loaded " + repository.getBranch() + " of " + path);
 
-		ObjectId head = repository.resolve("HEAD");
-		System.out.println("head: " + head);
-
 		RevWalk walk = new RevWalk(repository);
 
-		System.out.println("Iterating " + walk.getRevFilter().toString());
-
+		Config storedConfig = repository.getConfig();
+		Set<String> remotes = storedConfig.getSubsections("remote");
+		 
+		String remoteGithub = "";
+		for (String remoteName : remotes) {
+			String url = storedConfig.getString("remote", remoteName, "url");
+			if (url.startsWith("https://github.com"))
+			{
+				if (!"".equals(remoteGithub))
+				{
+					System.out.println("Found second url - " + remoteGithub + "," + url);
+				}
+				remoteGithub = url.substring("https://github.com/".length());
+				break;
+			}
+			else
+			{
+				System.out.println("Found non-github url:" + url);
+			}
+		}
+		
+		int batchSize = 100;
+		
+		boolean foundStart = false;
 		for (Ref ref : repository.getAllRefs().values()) {
 			try {
-				walk.markStart(walk.parseCommit(ref.getObjectId()));
-			} catch (InvalidObjectException notACommit) {
+				if ("HEAD".equals(ref.getName())) {
+					walk.markStart(walk.parseCommit(ref.getObjectId()));
+					foundStart = true;
+					break;
+				}
+			} catch (Exception notACommit) {
+				System.out.println(notACommit.getMessage());
 				continue;
 			}
+		}
+		
+		if (!foundStart) {
+			System.out.println("Eror: could not find HEAD for " + path);
 		}
 
 		Collection<SolrInputDocument> docs = new ArrayList<SolrInputDocument>();
 
-		System.out.println(walk.iterator().hasNext());
-		Pattern jiraId = Pattern.compile(".*(JIRA-\\d*).*");
 		Pattern capitals = Pattern.compile(".*([A-Z]).*");
 
 		int cnt = 0;
 		for (RevCommit commit : walk) {
-			cnt++;
-			StringBuffer search = new StringBuffer();
+			try {
+				cnt++;
+				StringBuffer search = new StringBuffer();
 
-			SolrInputDocument doc = new SolrInputDocument();
-			if (commit.getParentCount() > 0) {
-				RevCommit parent = walk
-						.parseCommit(commit.getParent(0).getId());
+				SolrInputDocument doc1 = new SolrInputDocument();
+				if (commit.getParentCount() > 0) {
+					RevCommit parent = walk.parseCommit(commit.getParent(0)
+							.getId());
 
-				DiffFormatter df = new DiffFormatter(
-						DisabledOutputStream.INSTANCE);
-				df.setRepository(repository);
-				df.setDiffComparator(RawTextComparator.DEFAULT);
-				df.setDetectRenames(true);
+					DiffFormatter df = new DiffFormatter(
+							DisabledOutputStream.INSTANCE);
+					df.setRepository(repository);
+					df.setDiffComparator(RawTextComparator.DEFAULT);
+					df.setDetectRenames(true);
 
-				List<DiffEntry> diffs = df.scan(parent.getTree(),
-						commit.getTree());
+					java.util.List<DiffEntry> diffs = df.scan(parent.getTree(),
+							commit.getTree());
 
-				String[] projects = new String[diffs.size()];
-				String[] filetypes = new String[diffs.size()];
+					String[] projects = new String[diffs.size()];
+					String[] filetypes = new String[diffs.size()];
 
-				int i = 0;
-				for (Object obj : diffs) {
-					DiffEntry diff = (DiffEntry) obj;
+					int i = 0;
+					for (Object obj : diffs) {
+						DiffEntry diff = (DiffEntry) obj;
 
-					String file = diff.getNewPath().toLowerCase();
-					//String fullName = diff.getNewPath();
+						String file = diff.getNewPath().toLowerCase();
 
-					ChangeType mode = diff.getChangeType();
-					if (ChangeType.DELETE.equals(mode)) {
-						file = diff.getOldPath().toLowerCase();
-						//fullName = diff.getOldPath();
-					}
+						ChangeType mode = diff.getChangeType();
+						if (ChangeType.DELETE.equals(mode)) {
+							file = diff.getOldPath().toLowerCase();
+						}
 
-					projects[i] = "";
-					if (file.indexOf("/") >= 0) {
-						projects[i] = file.substring(0, file.indexOf("/"));
+						projects[i] = "";
+						if (file.indexOf("/") >= 0) {
+							projects[i] = file.substring(0, file.indexOf("/"));
+
+							search.append(" ");
+							search.append(projects[i].replace("_", " "));
+							search.append(" ");
+							search.append(projects[i]);
+						}
+
+						filetypes[i] = "";
+						if (file.lastIndexOf(".") >= 0) {
+							filetypes[i] = file
+									.substring(file.lastIndexOf("."));
+						}
 
 						search.append(" ");
-						search.append(projects[i].replace("_", " "));
-						search.append(" ");
-						search.append(projects[i]);
-					}
+						search.append(file);
 
-					filetypes[i] = "";
-					if (file.lastIndexOf(".") >= 0) {
-						filetypes[i] = file.substring(file.lastIndexOf("."));
-					}
+						Matcher m = capitals.matcher(file);
+						String fileStuff = m.replaceAll(" \1");
+						fileStuff = fileStuff.replace("/", " / ");
 
-					search.append(" ");
-					search.append(file);
-
-					Matcher m = capitals.matcher(file);
-					String fileStuff = m.replaceAll(" \1");
-					fileStuff = fileStuff.replace("/", " / ");
-
-					/*
-					 * FileHeader header = df.toFileHeader(diff);
-					 *
-					 * java.util.List changes = (java.util.List)
-					 * header.getHunks(); int add = 0; int mod = 0; int del = 0;
-					 * 
-					 * for (Object o : changes) { HunkHeader hunk =
-					 * (HunkHeader)o; if (ChangeType.ADD.equals(mode)) { add +=
-					 * (hunk.getNewLineCount()); // System.out.println("mod:" +
-					 * add); } else if (ChangeType.MODIFY.equals(mode)) { mod +=
-					 * (hunk.getNewLineCount()); // System.out.println("mod:" +
-					 * mod); } }
-					 */
-
-					i++;
+						i++;
+					}		
 				}
+				doc1.addField("id", remoteGithub + "." + commit.getId(), 1.0f);
+				String author = commit.getAuthorIdent().getName();
+				author = author.replace(".", " ");
+				
+				doc1.addField("author", author);
+				doc1.addField("author_facet", author);
+				doc1.addField("email", nvl(commit.getAuthorIdent().getEmailAddress(), " "));
+				doc1.addField("company", getCompany(commit.getAuthorIdent().getEmailAddress()));
+				doc1.addField("date", commit.getAuthorIdent().getWhen());
+				doc1.addField("message", commit.getFullMessage());
+				doc1.addField("name", commit.getName());
+				doc1.addField("github", remoteGithub);
 
-				doc.addField("project", projects);
-				doc.addField("filetype", filetypes);
-			}
-			doc.addField("id", commit.getId(), 1.0f);
-			String author = commit.getAuthorIdent().getName();
-			author = author.replace(".", " ");
+				search.append(" ").append(author);
+				search.append(" ").append(commit.getFullMessage());
 
-			// converting several repositories into the full text index -
-			// not all repositories have the same format for usernames
-			author = author.replace("gsieling", "Gary Sieling"); 
+				doc1.addField("search", search.toString());
+				docs.add(doc1);
 
-			doc.addField("author", author, 1.0f);
-			doc.addField("email", commit.getAuthorIdent().getEmailAddress(), 1.0f);
-			doc.addField("date", commit.getAuthorIdent().getWhen(), 1.0f);
-			doc.addField("message", commit.getFullMessage(), 1.0f);
-			doc.addField("name", commit.getName(), 1.0f);
+				if (cnt % batchSize == 0) {
+					synchronized (Main.class) {
+						processed += docs.size();
+					}
+					
+					server.add(docs);
 
-			search.append(" ").append(author);
-			search.append(" ").append(commit.getFullMessage());
+					server.commit();
 
-			doc.addField("search", search.toString());
+					docs = new ArrayList<SolrInputDocument>();
 
-			String msg = commit.getFullMessage();
-			doc.addField("ide",
-					msg.toLowerCase().contains("intellij") ? "intellij": "eclipse", 1.0f);
-			Matcher m = jiraId.matcher(msg);
-
-			if (m.find()) {
-				String issueId = m.group(1);
-				doc.addField("jira", issueId, 1.0f);
-			}
-			docs.add(doc);
-
-			if (cnt % 100 == 0) {
-				server.add(docs);
-				server.commit();
-
-				docs = new ArrayList<SolrInputDocument>();
-				System.out.println("Committed batch");
+					double elapsed = ( (new Date()).getTime() - startTime ) / 1000;
+					double diffsPerSecond = processed / ( elapsed );
+			        System.out.println("Commits per second:" + diffsPerSecond + ", elapsed time = " + elapsed + ", commits processed: " + processed);
+				}
+			} catch (Exception e) {
+				System.out.println(e.getMessage());
+				System.out.println(e);
 			}
 		}
 
-		server.add(docs);
+		try {
+			server.add(docs);
+		}
+		catch (Exception e)
+		{
+			System.out.println(e.getMessage());
+		}
 
 		server.commit();
 		System.out.println("finished");
 	}
+	
+
+	public static String nvl(String a, String b) {
+		if (a == null) {
+			return b;
+		}
+		
+		return a;
+	}
+
+	private static String getCompany(String emailAddress) 
+	{
+		if (emailAddress == null)
+		{
+			emailAddress = "";
+		}
+		
+		if (emailAddress.contains("@"))
+		{
+			String company = emailAddress.split("@")[1];
+			if (company.contains("."))
+			{
+				company = company.substring(0, company.lastIndexOf("."));
+			}
+			
+			if (company.contains("."))
+			{
+				int start = company.lastIndexOf(".");
+				company = company.substring(start, company.length());
+			}
+			
+			return company;
+		}
+		
+		return emailAddress;
+	}
+
 }
