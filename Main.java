@@ -113,10 +113,8 @@ public class Main {
 			MissingObjectException, IncorrectObjectTypeException,
 			CorruptObjectException, SolrServerException {
 		FileRepositoryBuilder builder = new FileRepositoryBuilder();
-		Repository repository = builder.setGitDir(new File(path))
-				.readEnvironment() // scan environment GIT_* variables
-				.findGitDir() // scan up the file system tree
-				.build();
+		Repository repository = builder.setGitDir(new File(path)).build();
+		
 		System.out.println("Loaded " + repository.getBranch() + " of " + path);
 
 		RevWalk walk = new RevWalk(repository);
