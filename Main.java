@@ -21,6 +21,7 @@ import org.eclipse.jgit.errors.CorruptObjectException;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.Config;
+import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -229,15 +230,18 @@ public class Main {
 						i++;
 					}		
 				}
+				
+				PersonIdent commitAuthor = commit.getAuthorIdent();
+				
 				doc1.addField("id", remoteGithub + "." + commit.getId(), 1.0f);
-				String author = commit.getAuthorIdent().getName();
+				String author = commitAuthor.getName();
 				author = author.replace(".", " ");
 				
 				doc1.addField("author", author);
 				doc1.addField("author_facet", author);
-				doc1.addField("email", nvl(commit.getAuthorIdent().getEmailAddress(), " "));
-				doc1.addField("company", getCompany(commit.getAuthorIdent().getEmailAddress()));
-				doc1.addField("date", commit.getAuthorIdent().getWhen());
+				doc1.addField("email", nvl(commitAuthor.getEmailAddress(), " "));
+				doc1.addField("company", getCompany(commitAuthor.getEmailAddress()));
+				doc1.addField("date", commitAuthor.getWhen());
 				doc1.addField("message", commit.getFullMessage());
 				doc1.addField("name", commit.getName());
 				doc1.addField("github", remoteGithub);
