@@ -184,44 +184,33 @@ public class Main {
 					java.util.List<DiffEntry> diffs = df.scan(parent.getTree(),
 							commit.getTree());
 
-					String[] projects = new String[diffs.size()];
-					String[] filetypes = new String[diffs.size()];
-
-					int i = 0;
+					if (diffs.size() > 50) 
+					{
+						// we're aiming to find out who was the lead on a project
+						// ignore massive merges / refactorings
+						continue;
+					}
+					
 					for (Object obj : diffs) {
 						DiffEntry diff = (DiffEntry) obj;
 
 						String file = diff.getNewPath().toLowerCase();
 
 						ChangeType mode = diff.getChangeType();
-						if (ChangeType.DELETE.equals(mode)) {
-							file = diff.getOldPath().toLowerCase();
+						if (ChangeType.DELETE.equals(mode) || 
+							ChangeType.RENAME.equals(mode) ||
+							ChangeType.COPY.equals(mode)) {
+							// since the aim is to find who was the lead on a project
+							// just count things that look like real work, not moving
+							// stuff around
+							continue;
 						}
-
-						projects[i] = "";
-						if (file.indexOf("/") >= 0) {
-							projects[i] = file.substring(0, file.indexOf("/"));
-
-							search.append(" ");
-							search.append(projects[i].replace("_", " "));
-							search.append(" ");
-							search.append(projects[i]);
-						}
-
-						filetypes[i] = "";
-						if (file.lastIndexOf(".") >= 0) {
-							filetypes[i] = file
-									.substring(file.lastIndexOf("."));
-						}
-
-						search.append(" ");
-						search.append(file);
 
 						Matcher m = capitals.matcher(file);
-						String fileStuff = m.replaceAll(" \1");
-						fileStuff = fileStuff.replace("/", " / ");
-
-						i++;
+						String tokenizedFile = m.replaceAll(" \1");
+						tokenizedFile = tokenizedFile.replace("/", " ");
+						tokenizedFile = tokenizedFile.replace("_", " ");
+						search.append(tokenizedFile);
 					}		
 				}
 				
@@ -232,7 +221,6 @@ public class Main {
 				author = author.replace(".", " ");
 				
 				doc1.addField("author", author);
-				doc1.addField("author_facet", author);
 				doc1.addField("email", nvl(commitAuthor.getEmailAddress(), " "));
 				doc1.addField("company", getCompany(commitAuthor.getEmailAddress()));
 				doc1.addField("date", commitAuthor.getWhen());
