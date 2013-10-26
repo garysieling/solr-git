@@ -41,6 +41,9 @@ public class Main {
 		private HttpSolrServer _server;
 		private Pattern _capitals = Pattern.compile(".*([A-Z]).*");
 
+		DiffFormatter df = new DiffFormatter(
+				DisabledOutputStream.INSTANCE);
+
 		public InsertThread(int index, int maxIndex, File[] files)
 		{
 			_index = index;
@@ -53,7 +56,7 @@ public class Main {
 			_server = new HttpSolrServer(
 					"http://localhost:8983/solr/");
 			_server.setMaxRetries(5);
-
+			
 			int i = 0;
 						
 			for (File f : _files)
@@ -102,8 +105,6 @@ public class Main {
 			FileRepositoryBuilder builder = new FileRepositoryBuilder();
 			Repository repository = builder.setGitDir(new File(path)).build();
 			
-			System.out.println("Loaded " + repository.getBranch() + " of " + path);
-
 			RevWalk walk = new RevWalk(repository);
 
 			Config storedConfig = repository.getConfig();
@@ -128,6 +129,11 @@ public class Main {
 			}
 			
 			int batchSize = 10000;
+
+			df.setRepository(repository);
+			df.setContext(0);
+			df.setDiffComparator(RawTextComparator.DEFAULT);
+			df.setDetectRenames(true);
 			
 			boolean foundStart = false;
 			for (Ref ref : repository.getAllRefs().values()) {
@@ -145,6 +151,7 @@ public class Main {
 			
 			if (!foundStart) {
 				System.out.println("Eror: could not find HEAD for " + path);
+				return;
 			}
 
 			int cnt = 0;
@@ -157,13 +164,6 @@ public class Main {
 					if (commit.getParentCount() > 0) {
 						RevCommit parent = walk.parseCommit(commit.getParent(0)
 								.getId());
-
-						DiffFormatter df = new DiffFormatter(
-								DisabledOutputStream.INSTANCE);
-						df.setRepository(repository);
-						df.setContext(0);
-						df.setDiffComparator(RawTextComparator.DEFAULT);
-						df.setDetectRenames(true);
 
 						java.util.List<DiffEntry> diffs = df.scan(parent.getTree(),
 								commit.getTree());
