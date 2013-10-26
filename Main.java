@@ -62,11 +62,6 @@ public class Main {
 						System.out.println(filename);
 						convertRepo(server, filename);
 					}
-					
-					if (i > 100) {
-						break;
-					}
-
 				}
 				
 				System.out.println("Total repositories: " + i);
@@ -100,11 +95,12 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 		Date startDate = new Date();
 		
-		int maxThreads = 1;
+		int maxThreads = Runtime.getRuntime().availableProcessors();
 		for (int i = 0; i < maxThreads; i++)
 		{
 			new InsertThread(i, maxThreads).start();
 		}
+		System.out.println("Starting " + maxThreads + " threads");
 		
 		Date endDate = new Date();
 		
@@ -146,7 +142,7 @@ public class Main {
 			}
 		}
 		
-		int batchSize = 100;
+		int batchSize = 10000;
 		
 		boolean foundStart = false;
 		for (Ref ref : repository.getAllRefs().values()) {
@@ -275,6 +271,15 @@ public class Main {
 
 		try {
 			server.add(docs);
+			server.commit();
+			
+			synchronized (Main.class) {
+				processed += docs.size();
+			}
+			
+			double elapsed = ( (new Date()).getTime() - startTime ) / 1000;
+			double diffsPerSecond = processed / ( elapsed );
+	        System.out.println("Commits per second:" + diffsPerSecond + ", elapsed time = " + elapsed + ", commits processed: " + processed);
 		}
 		catch (Exception e)
 		{
@@ -282,7 +287,6 @@ public class Main {
 		}
 
 		server.commit();
-		System.out.println("finished");
 	}
 	
 
