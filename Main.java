@@ -2,6 +2,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Set;
@@ -32,6 +33,8 @@ public class Main {
 	static int processed = 0;
 	static long startTime = new Date().getTime();
 	
+	static final int urlStartIdx = "https://github.com/".length();
+	
 	public static class InsertThread extends Thread
 	{
 		private final int _index;
@@ -39,7 +42,7 @@ public class Main {
 		private File[] _files;
 		private Collection<SolrInputDocument> _docs = new ArrayList<SolrInputDocument>();
 		private HttpSolrServer _server;
-		private Pattern _capitals = Pattern.compile(".*([A-Z]).*");
+		private Pattern _capitals = Pattern.compile(".*([a-z])([A-Z]).*");
 
 		DiffFormatter df = new DiffFormatter(
 				DisabledOutputStream.INSTANCE);
@@ -119,7 +122,7 @@ public class Main {
 					{
 						System.out.println("Found second url - " + remoteGithub + "," + url);
 					}
-					remoteGithub = url.substring("https://github.com/".length());
+					remoteGithub = url.substring(urlStartIdx);
 					break;
 				}
 				else
@@ -158,7 +161,7 @@ public class Main {
 			for (RevCommit commit : walk) {
 				try {
 					cnt++;
-					StringBuffer search = new StringBuffer();
+					StringBuilder search = new StringBuilder(5000);
 
 					SolrInputDocument document = new SolrInputDocument();
 					if (commit.getParentCount() > 0) {
@@ -191,9 +194,11 @@ public class Main {
 							}
 
 							Matcher m = _capitals.matcher(file);
-							String tokenizedFile = m.replaceAll(" \1");
+							String tokenizedFile = m.replaceAll("\1 \2");
 							tokenizedFile = tokenizedFile.replace("/", " ");
 							tokenizedFile = tokenizedFile.replace("_", " ");
+							tokenizedFile = tokenizedFile.replace("-", " ");
+							tokenizedFile = tokenizedFile.replace(".", " ");
 							search.append(tokenizedFile);
 						}		
 					}
@@ -211,6 +216,14 @@ public class Main {
 					document.addField("message", commit.getFullMessage());
 					document.addField("name", commit.getName());
 					document.addField("github", remoteGithub);
+					
+					Calendar cal = Calendar.getInstance();
+					cal.setTime(commitAuthor.getWhen());
+					int year = cal.get(Calendar.YEAR);
+					int month = cal.get(Calendar.MONTH);
+					    
+					document.addField("year", "" + year);
+					document.addField("year-month", "" + year + "-" + month);
 
 					search.append(" ").append(author);
 					search.append(" ").append(commit.getFullMessage());
@@ -265,7 +278,7 @@ public class Main {
 		
 		int maxThreads = Runtime.getRuntime().availableProcessors();
 		
-		File[] files = new File("E:\\VMs\\expert-search\\repos\\").listFiles();
+		File[] files = new File("E:\\VMs\\expert-search\\repos3\\").listFiles();
 		for (int i = 1; i <= maxThreads; i++)
 		{
 			System.out.println("Starting thread " + i + " threads");
