@@ -9,6 +9,11 @@
     <dependency org="com.madgag"
                 name="org.eclipse.jgit"
                 rev="0.10.99.0"/>
+    <dependency org="org.quartz-scheduler" name="quartz" rev="2.2.0">
+      <exclude org="javax.transaction" /> 
+      <exclude org="javax.security" /> 
+      <exclude org="javax.jms" /> 
+    </dependency>
   </dependencies>
 </ivy-module>
 

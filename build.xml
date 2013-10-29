@@ -9,6 +9,8 @@
             value="."/>
   <property name="lib.dir"
             value="lib"/>
+  <property name="conf.dir"
+            value="conf"/>
   <mkdir dir="${lib.dir}"/>
   <property name="build.dir"
             value="build"/>
@@ -57,6 +59,7 @@
 
   <path id="lib-paths">
     <fileset dir="${lib.dir}" includes="**/*.jar"/>
+    <fileset dir="${conf.dir}" includes="**/*.properties"/>
   </path>
 
   <target name="clean">
@@ -84,9 +87,24 @@
     </java>
   </target>
 
+  <target name="invoke-wf"
+          depends="compile">
+    <java classname="Workflow"
+          fork="true"
+          classpathref="lib-paths"
+          failonerror="true">
+      <classpath>
+        <pathelement location="${classes.dir}"/>
+      </classpath>
+    </java>
+  </target>
+
+
   <target name="test"
           depends="clean,compile"/>
   <target name="run"
           depends="clean,invoke"/>
+  <target name="wf"
+          depends="clean,invoke-wf"/>
 </project>
 
