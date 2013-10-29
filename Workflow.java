@@ -32,13 +32,16 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.quartz.*;
 import org.quartz.impl.*;
 
+
+import org.apache.log4j.Logger;
+import org.apache.log4j.BasicConfigurator;
+
 public class Workflow {
-	public class HelloJob implements Job {
-		public void execute(JobExecutionContext context) {
-		}
-	}
+	static Logger logger = Logger.getLogger(Workflow.class);
 
 	public static void main(String[] args) throws Exception {
+		BasicConfigurator.configure();
+
 		System.out.println("Starting Quartz");
 		startWorkflow();
 	}
@@ -48,7 +51,7 @@ public class Workflow {
 
 		scheduler.start();
 
-		JobDetail job = JobBuilder.newJob(HelloJob.class)
+		JobDetail job = JobBuilder.newJob(WorkflowJob.class)
          		.withIdentity("job1", "group1")
              		.build();
         
