@@ -58,7 +58,7 @@
   </target>
 
   <path id="lib-paths">
-    <fileset dir="${lib.dir}" includes="**/*.jar"/>
+    <fileset dir="${lib.dir}" includes="**/*.jar" excludes="*-sources.jar,*-javadoc.jar" />
     <fileset dir="${conf.dir}" includes="**/*.properties"/>
   </path>
 
