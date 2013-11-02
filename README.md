@@ -22,13 +22,23 @@ Solr setup:
 cd ~
 wget http://apache.mesi.com.ar/lucene/solr/4.5.1/solr-4.5.1.zip
 unzip solr-4.5.1.zip
-cd /solr-4.5.1/example
-java -jar start.jar
 ```
 
 Setting up the application:
 ```
 git clone https://github.com/garysieling/solr-git.git
+```
+
+Copy schema.xml and authors.txt into the Solr distribution:
+```
+cp solr-git/schema.xml solr-4.5.1/example/solr/collection1/conf/
+cp solr-git/authors.txt solr-4.5.1/example/solr/collection1/conf/
+```
+
+Start Solr:
+```
+cd /solr-4.5.1/example
+java -jar start.jar
 ```
 
 Modify the URL to point to your local Solr server, if needed (i.e. if you changed the default port or ran it on a different machine).
