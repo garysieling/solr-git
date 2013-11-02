@@ -24,7 +24,7 @@ wget http://apache.mesi.com.ar/lucene/solr/4.5.1/solr-4.5.1.zip
 unzip solr-4.5.1.zip
 ```
 
-Setting up the application:
+Get application source code:
 ```
 git clone https://github.com/garysieling/solr-git.git
 ```
