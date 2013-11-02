@@ -31,7 +31,7 @@ Setting up the application:
 git clone https://github.com/garysieling/solr-git.git
 ```
 
-Modify the URL to point to your local Solr server, if needed (i.e. if you changed the default port or ran it on a different matchine).
+Modify the URL to point to your local Solr server, if needed (i.e. if you changed the default port or ran it on a different machine).
 
 Edit the location of the local git files you want indexed.
 
